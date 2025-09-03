@@ -37,7 +37,7 @@ class UTS_Dataset(Dataset):
         # data (LxC) C_0 cpu_util; C_1:8 gpu_util; C_9 mem; C_10 power; C_11 in_temp; C_12 out_temp1; C_13 out_temp2
         data = data[:, :1] # cpu only
         df_stamp = df_raw[['timestamp']]
-        df_stamp['timestamp'] = pd.to_datetime(df_stamp.date)
+        df_stamp['timestamp'] = pd.to_datetime(df_stamp.timestamp)
 
         # split data into train, val and test parts
         total_len = len(data)
@@ -59,13 +59,13 @@ class UTS_Dataset(Dataset):
             '''
             discrete/categorical feature
             '''
-            df_stamp['day'] = df_stamp.date.apply(lambda row: row.day, 1)
-            df_stamp['weekday'] = df_stamp.date.apply(lambda row: row.weekday(), 1)
-            df_stamp['hour'] = df_stamp.date.apply(lambda row: row.hour, 1)
-            df_stamp['min'] = df_stamp.date.apply(lambda row: row.minute, 1)
-            data_stamp = df_stamp.drop(['date'], axis=1).values
+            df_stamp['day'] = df_stamp.timestamp.apply(lambda row: row.day, 1)
+            df_stamp['weekday'] = df_stamp.timestamp.apply(lambda row: row.weekday(), 1)
+            df_stamp['hour'] = df_stamp.timestamp.apply(lambda row: row.hour, 1)
+            df_stamp['min'] = df_stamp.timestamp.apply(lambda row: row.minute, 1)
+            data_stamp = df_stamp.drop(['timestamp'], axis=1).values
         elif self.timeenc == 1:
-            data_stamp = time_feature(pd.to_datetime(df_stamp['date'].values), freq=self.freq)
+            data_stamp = time_feature(pd.to_datetime(df_stamp['timestamp'].values), freq=self.freq)
             data_stamp = data_stamp.transpose(1, 0)
         else:
             raise NotImplementedError("Specify a right time encoder type")
@@ -86,9 +86,9 @@ class UTS_Dataset(Dataset):
         x = self.data[start:end] # (in_len, features)
         y = self.data[end : end+self.out_len]
 
-        if self.timeenc:
-            x_time = self.data_stamp[start:end]
-            y_time = self.data_stamp[end: end+self.out_len]
+        if self.timeenc > -1:
+            x_time = self.date[start:end]
+            y_time = self.date[end: end+self.out_len]
             return x, x_time, y, y_time
         else:
             return x, y

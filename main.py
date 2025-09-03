@@ -47,26 +47,16 @@ def build_model(cfg):
     """
     load model
     """
-    if cfg.model_name == 'agcrn':
-        from models import AGCRN
-        return AGCRN(cfg)
-    elif cfg.model_name == 'gwnet':
-        from models import GraphWaveNet
-        return GraphWaveNet(cfg)
-    # elif cfg.model_name == 'deepar':
-    #     from models import DeepAR
-    #     retrun DeepAR(cfg)
+    if cfg.model_name == 'gru':
+        from models import GRU
+        return GRU(cfg)
     else:
         raise NotImplementedError
 
 def build_trainer(model, scaler, cfg):
-    if cfg.trainer_name == "MTS_trainer":
-        from Trainer.MTS_trainer import MTS_trainer
-        trainer = MTS_trainer(model, scaler, cfg)
-        return trainer
-    elif cfg.trainer_name == "MTS_trainer_wEvent":
-        from Trainer.MTS_trainer_wEvent import MTS_trainer
-        trainer = MTS_trainer(model, scaler, cfg)
+    if cfg.trainer_name == "UTS_trainer":
+        from Trainer.UTS_trainer import UTS_trainer
+        trainer = UTS_trainer(model, scaler, cfg)
         return trainer
     else:
         raise NotImplementedError

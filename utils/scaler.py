@@ -56,5 +56,5 @@ class ZScoreScaler():
         return scaled_data * (self.std + 1e-8) + self.mean
     
     def inver_transform_col(self, scaled_data):
-        return scaled_data * (self.std[None, None, :] + 1e-8) + self.mean[None, None, :]
+        return scaled_data * (self.std + 1e-8) + self.mean
     

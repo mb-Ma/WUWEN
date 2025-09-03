@@ -66,10 +66,12 @@ class UTS_trainer(Basic_Trainer):
                 _log = {}
                 for batch in tq:
                     optimizer.zero_grad()
-                    batch_x, batch_y = batch
+                    batch_x, x_time, batch_y, y_time = batch
+                    x_time = x_time.to(self.device)
+                    y_time = y_time.to(self.device)
                     batch_x = batch_x.float().to(self.device)
                     batch_y = batch_y.float().to(self.device)
-                    pred_y = self.model(batch_x)
+                    pred_y = self.model((batch_x, x_time))
                     # if reverse the prediction to original dimension
                     if not self.args.is_norm_loss:
                         if self.args.if_col_norm:
@@ -84,6 +86,7 @@ class UTS_trainer(Basic_Trainer):
                     loss = loss_func(pred_y, batch_y)
                     loss.backward()
                     optimizer.step()
+                    scheduler.step()
                     train_loss.append(loss.detach().item())
                     _loss = {"loss": np.mean(train_loss)}
                     _log = {**_loss, **_v_metric} # unpack 
@@ -96,8 +99,6 @@ class UTS_trainer(Basic_Trainer):
             if self.args.early_stoping:
                 if _v_metric["mae"] < best_loss:
                     best_loss = _v_metric["mae"]
-                    # save best model parameters
-                    # torch.save(model.state_dict(), os.path.join(cfg.log_path, "model.pt"))
                     best_model = copy.deepcopy(self.model.state_dict())
                     not_improved_count = 0
                 else:
@@ -114,16 +115,18 @@ class UTS_trainer(Basic_Trainer):
         all_labels = []
         with torch.no_grad():
             for batch in valid_loader:
-                batch_x, batch_y = batch
+                batch_x, x_time, batch_y, y_time = batch
+                x_time = x_time.to(self.device)
+                y_time = y_time.to(self.device)
                 batch_x = batch_x.float().to(self.device)
-                pred_y = self.model(batch_x)
-
+                batch_y = batch_y.float().to(self.device)
+                pred_y = self.model((batch_x, x_time))
                 # if reverse the prediction to original dimension
                 if self.args.if_col_norm:
                     pred_y = self.scaler.inver_transform_col(
-                        pred_y
+                        pred_y.cpu()
                     )
-                    batch_y = self.scaler.inver_transform_col(batch_y)
+                    batch_y = self.scaler.inver_transform_col(batch_y.cpu())
                 else:
                     pred_y = self.scaler.inver_transform(pred_y)
                     batch_y = self.scaler.inver_transform(batch_y)
@@ -150,16 +153,19 @@ class UTS_trainer(Basic_Trainer):
 
         with torch.no_grad():
             for batch in test_loader:
-                batch_x, batch_y = batch
+                batch_x, x_time, batch_y, y_time = batch
+                x_time = x_time.to(self.device)
+                y_time = y_time.to(self.device)
                 batch_x = batch_x.float().to(self.device)
-                pred_y = self.model(batch_x)
+                batch_y = batch_y.float().to(self.device)
+                pred_y = self.model((batch_x, x_time))
 
                 # if reverse the prediction to original dimension
                 if self.args.if_col_norm:
                     pred_y = self.scaler.inver_transform_col(
-                        pred_y
+                        pred_y.cpu()
                     )
-                    batch_y = self.scaler.inver_transform_col(batch_y)
+                    batch_y = self.scaler.inver_transform_col(batch_y.cpu())
                 else:
                     pred_y = self.scaler.inver_transform(pred_y)
                     batch_y = self.scaler.inver_transform(batch_y)
@@ -176,4 +182,4 @@ class UTS_trainer(Basic_Trainer):
 
 if __name__=="__main__":
     args = {'gpu': 0}
-    mts = MTS_trainer(args)
+    mts = UTS_trainer(args)
