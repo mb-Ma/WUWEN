@@ -50,6 +50,9 @@ def build_model(cfg):
     if cfg.model_name == 'gru':
         from models import GRU
         return GRU(cfg)
+    elif cfg.model_name == "nbeats":
+        from models import NBeats
+        return NBeats(cfg)
     else:
         raise NotImplementedError
 
