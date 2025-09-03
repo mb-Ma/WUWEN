@@ -1,0 +1,12 @@
+__pycache__/
+*.py[cod]
+*.so
+.env/
+venv/
+ENV/
+env/
+*.tmp
+*.swp
+*.DS_Store
+outputs/
+data/ori_data
