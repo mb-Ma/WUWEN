@@ -1,0 +1,85 @@
+model_name: csdi
+trainer_name: CSDI_trainer
+config_path: 'conf/baseline/csdi_UTS_fast_test.yaml'
+seed: 2024 # 随机数种子
+# training
+training_config:
+  seed: 2024 # 随机数种子
+  device: "cuda:4" # 训练或推理使用的GPU
+  mode: "pred" # 'pred'还是'train'
+  save_path: './experiments/csdi/'
+  model_path: '' # 如果不为空，则直接加载模型进行推理，否则进行训练
+  valid_nsample: 3 # 推理验证集时产生的样本曲线数
+  epochs: 1 # 训练轮次
+  batch_size: 16 # 单批次样本数目
+  itr_per_epoch: 1.0e+8
+  lr: 1.0e-3 # 初始学习率
+  p1: 15 # 学习率第一次调整轮次
+  p2: 18 # 学习率第二次调整轮次
+  lr_gamma: 0.1 # 学习率调整比例
+  finetune:
+    epochs: 5
+    batch_size: 16
+    lr: 1.0e-3
+    p1: 0.75
+    p2: 0.9
+    lr_gamma: 0.1
+  roll_run: 0 # 定义额外滚动测试次数，为0时即为不进行滚动测试，只测试一次
+  roll_step: 7 # 定义滚动测试的平移长度为多少个unit_len
+  inverse: True #输出结果是否去归一化
+
+
+# data
+data_config:
+  is_non_stationary: False # 决定是否要进行非平稳时间序列的训练，1的话则进行归一化
+  dataset_name: UTS_Dataset
+  data_path: ./data/processed_data/1_datacenter.csv # 数据所在位置
+  columns: ['cpu_util'] # 确定取数据中哪些列及其相对位置
+  target_cols: ['cpu_util'] # 目标列名
+  feature_cols_da: [] # 辅助变量，日前
+  feature_cols_mask2D: [] # 辅助变量，日内
+  feature_cols_mask1D: [] # 辅助变量，日内
+  data_mode: 1 # 0的话就是使用数据长度切割数据，1的话就是使用时间切割数据
+  unit_len: 12 # 一天的数据序列长度
+  training_step: 1 # 训练时偏移的步长
+  past_len: 1 # 历史窗长，多少个unit_len
+  pred_len: 1 # 预测长度，多少个unit_len
+  data_len: # data_mode为0
+    end: "2024-11-19 23:45:00" # 确定数据集的终止时间
+    train: 366 # 训练集长度，多少个unit_len，-1时为剩余的全部数据
+    valid: 32 # 验证集长度，多少个unit_len
+    test: 62 # 测试集长度，多少个unit_len
+    shift: 0 # 相较于数据末尾的向前偏移量，多少个unit_len
+  data_time: # data_mode为1
+    train: # 训练集
+      start: "2025-07-29 09:42:00"
+      end: "2025-07-30 09:21:30"
+    valid: # 验证集
+      start: "2025-08-19 09:22:00"
+      end: "2025-08-22 09:21:30"
+    test: # 测试集
+      start: "2025-08-22 09:22:00"
+      end: "2025-08-23 09:16:30"
+  train_val_test_ratio: [0.7, 0.1, 0.2] #data_mode为2
+
+# model
+model_config:
+  nsample: 10 # 推理时产生的样本曲线数
+  version: 1 # 模型版本
+  is_finetune: 0 # 决定是否要进行微调训练
+  diffusion:
+    layers: 5
+    channels: 64 
+    nheads: 8
+    diffusion_embedding_dim: 128
+    beta_start: 0.0001
+    beta_end: 0.5
+    num_steps: 50
+    schedule: "quad"
+    is_linear: False
+  model:
+    is_unconditional: 0
+    timeemb: 128
+    featureemb: 16
+    target_strategy: "test"
+    num_sample_features: 64

@@ -1,2 +1,2 @@
 defaults:
- - baseline: AGCRN_MTS
+ - baseline: TimeMixer_UTS
