@@ -60,6 +60,9 @@ def build_model(cfg):
     elif cfg.model_name == 'timemixer':
         from models.TimeMixer.timemixer import timemixer
         return timemixer(cfg)
+    elif cfg.model_name == "nbeats":
+        from models import NBeats
+        return NBeats(cfg)
     else:
         raise NotImplementedError
 

@@ -4,7 +4,7 @@ train_val_test_ratio: [0.7, 0.1, 0.2]
 
 # Training
 dataset_name: UTS_Dataset
-model_name: gru
+model_name: nbeats
 trainer_name: UTS_trainer
 loss_name: MAE
 use_gpu: True
@@ -28,9 +28,14 @@ timeenc: 0
 freq: '30s'
 
 # model
+type: "generic"
+input_size: 12
+output_size: 12
+stacks: 10
+layers: 3
+layer_size: 128
+
 dropout: 0.3
-hidden_size: 64
-num_layers: 2
 T_embed_dim: 8 # 4(feats)*8=32
 
 early_stoping: True
