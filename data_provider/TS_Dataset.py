@@ -10,8 +10,8 @@ import warnings
 
 warnings.filterwarnings('ignore')
 
-class UTS_Dataset(Dataset):
-    def __init__(self, logger, data_path, train_val_test_ratio, in_len=12, out_len=12, mode='train', norm_type='ZScore', if_col_norm=False, timeenc=0, freq='h', stride=1):
+class MTS_Dataset(Dataset):
+    def __init__(self, logger, data_path, train_val_test_ratio, in_len=12, out_len=12, mode='train', norm_type='ZScore', if_col_norm=False, timeenc=0, freq='h', stride=1, in_var=None, out_var=None):
         self.logger = logger
         self.data_path = data_path
         self.train_val_test_ratio = train_val_test_ratio
@@ -22,6 +22,8 @@ class UTS_Dataset(Dataset):
         self.out_len = out_len
         self.if_col_norm = if_col_norm
         self.stride = stride
+        self.in_var = in_var
+        self.out_var = out_var
         self.data, self.date = self._load_data() # the data shape is LxC
 
     def _load_data(self):
@@ -31,11 +33,13 @@ class UTS_Dataset(Dataset):
         except (FileNotFoundError, ValueError) as e:
             raise ValueError(f'Error loading data file: {self.data_path}') from e
         
+        logger.info(f"the num of input variables:{len(self.in_var)}, the num of output variables: {len(self.out_var)}.")
+
         cols = df_raw.columns[1:]
         data = df_raw[cols].values
         # here choose data source
         # data (LxC) C_0 cpu_util; C_1:8 gpu_util; C_9 mem; C_10 power; C_11 in_temp; C_12 out_temp1; C_13 out_temp2
-        data = data[:, :1] # cpu only
+
         df_stamp = df_raw[['timestamp']]
         df_stamp['timestamp'] = pd.to_datetime(df_stamp.timestamp)
 
@@ -83,8 +87,8 @@ class UTS_Dataset(Dataset):
         '''
         start = idx * self.stride
         end = start + self.in_len
-        x = self.data[start:end] # (in_len, features)
-        y = self.data[end : end+self.out_len]
+        x = self.data[start:end, self.in_var] # (in_len, features)
+        y = self.data[end : end+self.out_len, self.out_var]
 
         if self.timeenc > -1:
             x_time = self.date[start:end]
