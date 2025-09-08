@@ -5,6 +5,8 @@ __pycache__/
 venv/
 ENV/
 env/
+experiments/*
+logs/*
 *.tmp
 *.swp
 *.DS_Store
