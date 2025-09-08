@@ -7,6 +7,12 @@ Why add mask to MAPE and MARE?
 import numpy as np
 import torch
 
+def SMAPE_torch(pred, true):
+    denominator = (torch.abs(true) + torch.abs(pred)) / 2
+    diff = torch.abs(true - pred) / denominator
+    diff = torch.where(denominator == 0, torch.zeros_like(diff), diff)  # 避免除零
+    return torch.mean(diff) * 100
+
 def MAE_torch(pred, true, mask_value=None):
     if mask_value != None:
         mask = torch.gt(true, mask_value)
@@ -114,6 +120,13 @@ def RMSE_np(pred, true, mask_value=None):
     RMSE = np.sqrt(np.mean(np.square(pred-true)))
     return RMSE
 
+def SMAPE_np(pred, true):
+    true, pred = np.array(true), np.array(pred)
+    denominator = (np.abs(true) + np.abs(pred)) / 2
+    diff = np.abs(true - pred) / denominator
+    diff[denominator == 0] = 0.0   # 避免除零
+    return np.mean(diff) * 100
+    
 #Root Relative Squared Error
 def RRSE_np(pred, true, mask_value=None):
     if mask_value != None:
@@ -194,17 +207,19 @@ def Metrics(pred, true, mask1=None, mask2=None):
         mae  = MAE_np(pred, true, mask1)
         rmse = RMSE_np(pred, true, mask1)
         mape = MAPE_np(pred, true, mask2)
+        smape = SMAPE_np(pred, true)
     elif type(pred) == torch.Tensor:
         mae  = MAE_torch(pred, true, mask1)
         rmse = RMSE_torch(pred, true, mask1)
         mape = MAPE_torch(pred, true, mask2)
+        smape = SMAPE_torch(pred, true)
     else:
         raise TypeError
     
-    return mae, rmse, mape
+    return mae, rmse, mape, smape
 
 
 if __name__ == '__main__':
     pred = torch.Tensor([1, 2, 3,4])
     true = torch.Tensor([2, 1, 4,5])
-    print(All_Metrics(pred, true, None, None))
+    print(Metrics(pred, true, None, None))
