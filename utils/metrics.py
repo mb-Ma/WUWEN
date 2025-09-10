@@ -187,7 +187,12 @@ def PNBI_np(pred, true, mask_value=None):
     bias = pred-true
     indicator = np.where(bias>0, True, False)
     return indicator.mean()
-
+def SMAPE_np(pred, true, mask_value=None):
+    if mask_value != None:
+        mask = np.where(true > (mask_value), True, False)
+        true = true[mask]
+        pred = pred[mask]
+    return np.mean(np.abs(true - pred) / (np.abs(true) + np.abs(pred)))
 def oPNBI_np(pred, true, mask_value=None):
     #if oPNBI>1, pred are bigger than true
     #if oPNBI<1, pred are smaller than true

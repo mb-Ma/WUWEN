@@ -15,7 +15,8 @@ import torch
 import pytz
 import shutil
 import os
-
+from utils.metrics import MAE_np, RMSE_np, MAPE_np, SPEARMAN_np, PEARSON_np,R2_np, SMAPE_np
+from utils.metrics import MAE_torch, RMSE_torch, MAPE_torch, R2_torch, SPEARMAN_torch, PEARSON_torch, SMAPE_torch
 from tqdm import tqdm
 from torch.optim import Adam
 from datetime import datetime
@@ -448,11 +449,53 @@ class csdi:
                 self.mean,
                 self.std,
             )
-
+            r2 = self.evaluate(
+                R2_torch,
+                all_target,
+                all_evalpoint,
+                all_observed_point,
+                all_observed_time,
+                all_generated_samples,
+                self.mean,
+                self.std,
+            )
+            spearman = self.evaluate(
+                SPEARMAN_torch,
+                all_target,
+                all_evalpoint,
+                all_observed_point,
+                all_observed_time,
+                all_generated_samples,
+                self.mean,
+                self.std,
+            )
+            pearson = self.evaluate(
+                PEARSON_torch,
+                all_target,
+                all_evalpoint,
+                all_observed_point,
+                all_observed_time,
+                all_generated_samples,
+                self.mean,
+                self.std,
+            )
+            smape = self.evaluate(
+                SMAPE_torch,
+                all_target,
+                all_evalpoint,
+                all_observed_point,
+                all_observed_time,
+                all_generated_samples,
+                self.mean,
+                self.std,
+            )
             print(f"第{k}次测试集MAE：", mae)
             print(f"第{k}次测试集RMSE：", rmse)
             print(f"第{k}次测试集MAPE：", mape)
-
+            print(f"第{k}次测试集R2：", r2)
+            print(f"第{k}次测试集Spearman：", spearman)
+            print(f"第{k}次测试集Pearson：", pearson)
+            print(f"第{k}次测试集SMAPE：", smape)
             # 存储单次训练出的模型
             self.save_model(self.model, output_path)
 
@@ -600,10 +643,10 @@ class csdi:
         pred_values = pred_values.contiguous()
         
         # 调用指标函数
-        if metric_func in [MAE_torch, RMSE_torch, MAPE_torch]:
+        if metric_func in [MAE_torch, RMSE_torch, MAPE_torch, R2_torch, SPEARMAN_torch, PEARSON_torch, SMAPE_torch]:
             # 使用PyTorch版本的指标函数
             return metric_func(pred_values, targets)
-        elif metric_func in [MAE_np, RMSE_np, MAPE_np]:
+        elif metric_func in [MAE_np, RMSE_np, MAPE_np, R2_np, SPEARMAN_np, PEARSON_np, SMAPE_np]:
             # 使用NumPy版本的指标函数
             return metric_func(pred_values.cpu().numpy(), targets.cpu().numpy())
         else:
@@ -639,7 +682,9 @@ class csdi:
         pred_values = samples[:, 0]  # 使用中位数预测值
         mae = MAE_np(pred_values, targets.flatten())
         rmse = RMSE_np(pred_values, targets.flatten())
-        
+        r2 = R2_np(pred_values, targets.flatten())
+        spearman = SPEARMAN_np(pred_values, targets.flatten())
+        pearson = PEARSON_np(pred_values, targets.flatten())
         print(f"验证集去归一化MAE: {mae}, RMSE: {rmse}")
         
         datas = np.concatenate((targets, samples), axis=1)
@@ -689,7 +734,10 @@ class csdi:
         pred_values = samples[:, 0]  # 使用中位数预测值
         mae = MAE_np(pred_values, targets.flatten())
         rmse = RMSE_np(pred_values, targets.flatten())
-        
+        smape = SMAPE_np(pred_values, targets.flatten())
+        r2 = R2_np(pred_values, targets.flatten())
+        spearman = SPEARMAN_np(pred_values, targets.flatten())
+        pearson = PEARSON_np(pred_values, targets.flatten())
         print(f"测试集MAE: {mae}, RMSE: {rmse}")
         
         datas = np.concatenate((targets, samples), axis=1)

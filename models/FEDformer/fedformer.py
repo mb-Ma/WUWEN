@@ -2,7 +2,7 @@ from data_provider.data_factory import data_provider
 from models.FEDformer import FEDformer_architectures
 from models.FEDformer.units.tools import EarlyStopping, adjust_learning_rate, visual
 from models.FEDformer.units.metrics import metric
-from utils.metrics import MAE_np, RMSE_np, MAPE_np
+from utils.metrics import MAE_np, RMSE_np, MAPE_np, SPEARMAN_np, PEARSON_np,R2_np, SMAPE_np
 import torch
 import torch.nn as nn
 from torch import optim
@@ -403,21 +403,31 @@ class fedformer(Exp_Basic):
         mae = MAE_np(preds, trues)
         rmse = RMSE_np(preds, trues)
         mape = MAPE_np(preds, trues)
-        
+        r2 = R2_np(preds, trues)
+        spearman = SPEARMAN_np(preds, trues)
+        pearson = PEARSON_np(preds, trues)
+        smape = SMAPE_np(preds, trues)
         # 保留原有的 metric 函数用于兼容性
         mae_old, mse, rmse_old, mape_old, mspe = metric(preds, trues)
         
-        print('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}'.format(mae, rmse, mape))
-        print('MSE: {:.6f}, MSPE: {:.6f}'.format(mse, mspe))
-        f = open("result_timexer.txt", 'a')
+        print('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}, R2: {:.6f}, Spearman: {:.6f}, Pearson: {:.6f}'.format(mae, rmse, mape, r2, spearman, pearson))
+        print('MSE: {:.6f}, MSPE: {:.6f}, SMAPE: {:.6f}'.format(mse, mspe, smape))
+        f = open("result_fedformer.txt", 'a')
         f.write(self.args.model_path + "  \n")
-        f.write('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}, MSE: {:.6f}, MSPE: {:.6f}'.format(mae, rmse, mape, mse, mspe))
+        f.write('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}, R2: {:.6f}, Spearman: {:.6f}, Pearson: {:.6f}, MSE: {:.6f}, MSPE: {:.6f}, SMAPE: {:.6f}'.format(mae, rmse, mape, r2, spearman, pearson, mse, mspe, smape))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, r2, spearman, pearson, smape]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
+
+        # 额外保存result.npz文件
+        np.savez(
+            os.path.join(folder_path, "result.npz"),
+            real_y=trues,
+            pred_y=preds,
+        )
 
         return

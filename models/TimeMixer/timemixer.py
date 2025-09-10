@@ -13,6 +13,7 @@ import argparse
 import pytz
 import pickle as pkl
 from datetime import datetime
+from utils.metrics import MAE_np, RMSE_np, MAPE_np, SPEARMAN_np, PEARSON_np,R2_np, SMAPE_np
 warnings.filterwarnings('ignore')
 
 class Exp_Basic(object):
@@ -391,22 +392,32 @@ class timemixer(Exp_Basic):
         trues = trues.reshape(-1, trues.shape[-2], trues.shape[-1])
         print('test shape:', preds.shape, trues.shape)
 
-        # result save
-        folder_path =self.foldername + '/'
-        if not os.path.exists(folder_path):
-            os.makedirs(folder_path)
-
-        mae, mse, rmse, mape, mspe = metric(preds, trues)
-        print('mse:{}, mae:{}'.format(mse, mae))
+        # 使用新的指标计算函数
+        mae = MAE_np(preds, trues)
+        rmse = RMSE_np(preds, trues)
+        mape = MAPE_np(preds, trues)
+        r2 = R2_np(preds, trues)
+        spearman = SPEARMAN_np(preds, trues)
+        pearson = PEARSON_np(preds, trues)
+        smape = SMAPE_np(preds, trues)
+        # 保留原有的 metric 函数用于兼容性
+        mae_old, mse, rmse_old, mape_old, mspe = metric(preds, trues)
+        
+        print('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}, R2: {:.6f}, Spearman: {:.6f}, Pearson: {:.6f}'.format(mae, rmse, mape, r2, spearman, pearson))
+        print('MSE: {:.6f}, MSPE: {:.6f}, SMAPE: {:.6f}'.format(mse, mspe, smape))
         f = open("result_timexer.txt", 'a')
         f.write(self.args.model_path + "  \n")
-        f.write('mse:{}, mae:{}'.format(mse, mae))
+        f.write('MAE: {:.6f}, RMSE: {:.6f}, MAPE: {:.6f}, R2: {:.6f}, Spearman: {:.6f}, Pearson: {:.6f}, MSE: {:.6f}, MSPE: {:.6f}, SMAPE: {:.6f}'.format(mae, rmse, mape, r2, spearman, pearson, mse, mspe, smape))
         f.write('\n')
         f.write('\n')
         f.close()
 
-        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe]))
+        np.save(folder_path + 'metrics.npy', np.array([mae, mse, rmse, mape, mspe, r2, spearman, pearson, smape]))
         np.save(folder_path + 'pred.npy', preds)
         np.save(folder_path + 'true.npy', trues)
-
-        return
+        # 额外保存result.npz文件
+        np.savez(
+            os.path.join(folder_path, "result.npz"),
+            real_y=trues,
+            pred_y=preds,
+        )
