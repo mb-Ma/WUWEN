@@ -8,11 +8,11 @@ training_config:
   #exogenous_forecast 多推1
   seed: 2024 # 随机数种子
   des: 'test' # help='exp description'
-  device: "cuda:1" # 训练或推理使用的GPU
+  device: "cuda:2" # 训练或推理使用的GPU
   is_training: True # 'pred'还是'train'
   data: 'UTS_Dataset'
   # data_path: './datasets/ETTm1/data.pkl'
-  features: S
+  features: M
   freq: 'h'
   checkpoints: './result/fedformer/'
 
@@ -22,9 +22,9 @@ training_config:
   model_id: 'UTS_Dataset_96_96' 
   model_name: fedformer 
   #
-  enc_in: 1
-  dec_in: 1
-  c_out: 1
+  enc_in: 8
+  dec_in: 8
+  c_out: 8
   d_model: 512
   e_layers: 2
   d_layers: 1
@@ -71,8 +71,10 @@ data_config:
   is_non_stationary: False # 决定是否要进行非平稳时间序列的训练，1的话则进行归一化
   dataset_name: UTS_Dataset
   data_path: ./data/processed_data/1_datacenter.csv # 数据所在位置
-  columns: ['cpu_util'] # 确定取数据中哪些列及其相对位置
-  target_cols: ['cpu_util'] # 目标列名
+  columns: ['gpu0_util', 'gpu1_util', 'gpu2_util',
+       'gpu3_util', 'gpu4_util', 'gpu5_util', 'gpu6_util', 'gpu7_util'] # 确定取数据中哪些列及其相对位置
+  target_cols: ['gpu0_util', 'gpu1_util', 'gpu2_util',
+       'gpu3_util', 'gpu4_util', 'gpu5_util', 'gpu6_util', 'gpu7_util'] # 目标列名
   feature_cols_da: [] # 辅助变量，日前
   feature_cols_mask2D: [] # 辅助变量，日内
   feature_cols_mask1D: [] # 辅助变量，日内

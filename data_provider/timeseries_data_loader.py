@@ -539,7 +539,7 @@ class Dataset_common(Dataset):
             self.data_stamp = data_stamp
         elif self.args.data_mode==2:
             # 按比例划分数据集
-            df_raw = df_raw.reset_index()
+            # df_raw = df_raw.reset_index()
             total_data_len = len(df_raw)
             
             # 根据比例计算各数据集的长度

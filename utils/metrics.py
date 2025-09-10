@@ -6,6 +6,7 @@ Why add mask to MAPE and MARE?
 '''
 import numpy as np
 import torch
+from scipy.stats import spearmanr, pearsonr
 
 def MAE_torch(pred, true, mask_value=None):
     if mask_value != None:
@@ -97,6 +98,52 @@ def SMAPE_torch(pred, true, mask_value=None):
         true = torch.masked_select(true, mask)
     return torch.mean(torch.abs(true-pred)/(torch.abs(true)+torch.abs(pred)))
 
+def R2_torch(pred, true, mask_value=None):
+    """R²决定系数"""
+    if mask_value != None:
+        mask = torch.gt(true, mask_value)
+        pred = torch.masked_select(pred, mask)
+        true = torch.masked_select(true, mask)
+    
+    # 计算总平方和 (TSS)
+    true_mean = torch.mean(true)
+    tss = torch.sum((true - true_mean) ** 2)
+    
+    # 计算残差平方和 (RSS)
+    rss = torch.sum((true - pred) ** 2)
+    
+    # R² = 1 - RSS/TSS
+    r2 = 1 - (rss / tss)
+    return r2
+
+def SPEARMAN_torch(pred, true, mask_value=None):
+    """Spearman相关系数"""
+    if mask_value != None:
+        mask = torch.gt(true, mask_value)
+        pred = torch.masked_select(pred, mask)
+        true = torch.masked_select(true, mask)
+    
+    # 转换为numpy计算Spearman相关系数
+    pred_np = pred.detach().cpu().numpy().flatten()
+    true_np = true.detach().cpu().numpy().flatten()
+    
+    correlation, _ = spearmanr(pred_np, true_np)
+    return torch.tensor(correlation, dtype=pred.dtype, device=pred.device)
+
+def PEARSON_torch(pred, true, mask_value=None):
+    """皮尔逊相关系数"""
+    if mask_value != None:
+        mask = torch.gt(true, mask_value)
+        pred = torch.masked_select(pred, mask)
+        true = torch.masked_select(true, mask)
+    
+    # 转换为numpy计算皮尔逊相关系数
+    pred_np = pred.detach().cpu().numpy().flatten()
+    true_np = true.detach().cpu().numpy().flatten()
+    
+    correlation, _ = pearsonr(pred_np, true_np)
+    return torch.tensor(correlation, dtype=pred.dtype, device=pred.device)
+
 
 def MAE_np(pred, true, mask_value=None):
     if mask_value != None:
@@ -185,6 +232,52 @@ def CORR_np(pred, true, mask_value=None):
     correlation = (correlation[index]).mean()
     return correlation
 
+def R2_np(pred, true, mask_value=None):
+    """R²决定系数"""
+    if mask_value != None:
+        mask = np.where(true > (mask_value), True, False)
+        true = true[mask]
+        pred = pred[mask]
+    
+    # 计算总平方和 (TSS)
+    true_mean = np.mean(true)
+    tss = np.sum((true - true_mean) ** 2)
+    
+    # 计算残差平方和 (RSS)
+    rss = np.sum((true - pred) ** 2)
+    
+    # R² = 1 - RSS/TSS
+    r2 = 1 - (rss / tss)
+    return r2
+
+def SPEARMAN_np(pred, true, mask_value=None):
+    """Spearman相关系数"""
+    if mask_value != None:
+        mask = np.where(true > (mask_value), True, False)
+        true = true[mask]
+        pred = pred[mask]
+    
+    # 展平数组
+    pred_flat = pred.flatten()
+    true_flat = true.flatten()
+    
+    correlation, _ = spearmanr(pred_flat, true_flat)
+    return correlation
+
+def PEARSON_np(pred, true, mask_value=None):
+    """皮尔逊相关系数"""
+    if mask_value != None:
+        mask = np.where(true > (mask_value), True, False)
+        true = true[mask]
+        pred = pred[mask]
+    
+    # 展平数组
+    pred_flat = pred.flatten()
+    true_flat = true.flatten()
+    
+    correlation, _ = pearsonr(pred_flat, true_flat)
+    return correlation
+
 def Metrics(pred, true, mask1=None, mask2=None):
     #mask1 filter the very small value, mask2 filter the value lower than a defined threshold
 
@@ -194,10 +287,16 @@ def Metrics(pred, true, mask1=None, mask2=None):
         mae  = MAE_np(pred, true, mask1)
         rmse = RMSE_np(pred, true, mask1)
         mape = MAPE_np(pred, true, mask2)
+        r2 = R2_np(pred, true, mask1)
+        spearman = SPEARMAN_np(pred, true, mask1)
+        pearson = PEARSON_np(pred, true, mask1)
     elif type(pred) == torch.Tensor:
         mae  = MAE_torch(pred, true, mask1)
         rmse = RMSE_torch(pred, true, mask1)
         mape = MAPE_torch(pred, true, mask2)
+        r2 = R2_torch(pred, true, mask1)
+        spearman = SPEARMAN_torch(pred, true, mask1)
+        pearson = PEARSON_torch(pred, true, mask1)
     else:
         raise TypeError
     

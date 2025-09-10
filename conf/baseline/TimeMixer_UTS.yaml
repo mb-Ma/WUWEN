@@ -7,7 +7,7 @@ seed: 2024 # 随机数种子
 training_config:
   seed: 2024 # 随机数种子
   des: 'test' # help='exp description'
-  device: "cuda:1" # 训练或推理使用的GPU
+  device: "cuda:3" # 训练或推理使用的GPU
   is_training: true # 'pred'还是'train'
   model_name: timemixer
   data: 'UTS_Dataset'
