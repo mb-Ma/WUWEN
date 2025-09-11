@@ -20,6 +20,7 @@ class Diffusion_Dataset(Dataset):
         unit_len = config['data_config']["unit_len"]
         self.pred_length = config['data_config']["pred_len"]*unit_len
         self.past_length = config['data_config']["past_len"] * unit_len
+        self.target_dim=config['data_config']["target_cols"]
         self.seq_length = self.past_length + self.pred_length
         self.kill_dim = len(config['data_config']["feature_cols_mask2D"])
         self.kill_dim1D = len(config['data_config']["feature_cols_mask1D"])
@@ -141,7 +142,10 @@ class Diffusion_Dataset(Dataset):
         target_mask = self.mask_data[
             index : index + self.seq_length
         ].copy()  # 目标掩码，告诉模型哪里是要预测的电价真值
-        target_mask[-self.pred_length :, 0] = 0.0
+        if self.target_dim == 1:
+            target_mask[-self.pred_length :, 0] = 0.0
+        else:
+            target_mask[-self.pred_length :, :] = 0.0
 
         # 确保数据是连续的numpy数组，并且是float32类型
         observed_data = np.ascontiguousarray(self.main_data[index : index + self.seq_length] * self.kill_mask).astype(np.float32)

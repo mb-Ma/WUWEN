@@ -1,39 +1,39 @@
-model_name: timemixer
+model_name: fedformer
 trainer_name: CSDI_trainer
-config_path: 'conf/baseline/TimeMixer_UTS.yaml'
+config_path: 'conf/baseline/FEDformer_UTS.yaml'
 root: './'
 seed: 2024 # 随机数种子
 # training
 training_config:
+  #exogenous_forecast 多推1
   seed: 2024 # 随机数种子
   des: 'test' # help='exp description'
-  device: "cuda:0" # 训练或推理使用的GPU
-  is_training: true # 'pred'还是'train'
-  model_name: timemixer
+  device: "cuda:3" # 训练或推理使用的GPU
+  is_training: True # 'pred'还是'train'
   data: 'UTS_Dataset'
   # data_path: './datasets/ETTm1/data.pkl'
   features: M
   freq: 'h'
-  checkpoints: './result/timemixer/'
+  checkpoints: './result/fedformer/'
 
   #task 
   # 此处暂未区分前向模型和后向模型的参数配置区别
   task_name: 'long_term_forecast'
-  model_id: 'TimeMixer_96_96'
-
+  model_id: 'UTS_Dataset_96_96' 
+  model_name: fedformer 
   #
   enc_in: 11
   dec_in: 11
   c_out: 11
-  d_model: 64
+  d_model: 512
   e_layers: 2
   d_layers: 1
-  d_ff: 64
+  d_ff: 2048
   moving_avg: 25
-  factor: 1
+  factor: 3
   n_heads: 8
   distil: True
-  label_len: 0
+  label_len: 0.5
   #forecasting task
 
   inverse: False
@@ -43,27 +43,26 @@ training_config:
   num_workers: 10
   itr: 1
   train_epochs: 10
-  batch_size: 32 # help='batch size of train input data'
+  batch_size: 96 # help='batch size of train input data'
   patience: 3 #help='early stopping patience'
-  learning_rate: 0.005
+  learning_rate: 0.001
   loss: 'MSE' #loss function
   lradj: 'type1' #help='adjust learning rate'
-  use_amp: false #help='use automatic mixed precision training', default=False
+  use_amp: False #help='use automatic mixed precision training', default=False
 
 
   # de-stationary projector params
-  p_hidden_dims: [128, 128] #help='hidden layer dimensions of projector (List)')
+  p_hidden_dims: [128,128] #help='hidden layer dimensions of projector (List)')
   p_hidden_layers: 2
 
   # metrics (dtw)
-  use_dtw: false #help='the controller of using dtw metric (dtw is time consuming, not suggested unless necessary)'
+  use_dtw: False #help='the controller of using dtw metric (dtw is time consuming, not suggested unless necessary)'
 
   # TimeXer
   patch_len: 16
 
-  save_path: './experiments/timemixer/'
+  save_path: './experiments/fedformer/'
   model_path: '' # 如果不为空，则直接加载模型进行推理，否则进行训练
-
 
 
 
@@ -84,7 +83,7 @@ data_config:
   data_mode: 2 # 0的话就是使用数据长度切割数据，1的话就是使用时间切割数据
   unit_len: 12 # 一天的数据序列长度
   training_step: 1 # 训练时偏移的步长
-  past_len: 5 # 历史窗长，多少个unit_len
+  past_len: 10 # 历史窗长，多少个unit_len
   pred_len: 1 # 预测长度，多少个unit_len
   data_len: # data_mode为0
     end: "2024-11-19 23:45:00" # 确定数据集的终止时间
@@ -106,8 +105,7 @@ data_config:
 
 # model
 model_config:
-  model: TimeMixer
-
+  model: FEDformer
 
   dropout: 0.1
   embed: 'timeF'
@@ -116,10 +114,10 @@ model_config:
   channel_independence: 1 #help='0: channel dependence 1: channel independence for FreTS model'
   decomp_method: 'moving_avg' #help='method of series decompsition, only support moving_avg or dft_decomp')
   use_norm: 1 #help='whether to use normalize; True 1 False 0'
-  down_sampling_layers: 3   #help='whether to use normalize; True 1 False 0'
+  down_sampling_layers: 0   #help='whether to use normalize; True 1 False 0'
   down_sampling_window: 1   #help='num of down sampling layers'
-  down_sampling_method: 'avg' #help='down sampling method, only support avg, max, conv'
-  seg_len: 96
+  dowm_sampling_method: None #help='down sampling method, only support avg, max, conv'
+  seg_len: 48
 
 
   #augmentation_ratio

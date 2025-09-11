@@ -7,7 +7,7 @@ seed: 2024 # 随机数种子
 training_config:
   seed: 2024 # 随机数种子
   des: 'test' # help='exp description'
-  device: "cuda:1" # 训练或推理使用的GPU
+  device: "cuda:0" # 训练或推理使用的GPU
   is_training: true # 'pred'还是'train'
   model_name: timemixer
   data: 'UTS_Dataset'
@@ -45,7 +45,7 @@ training_config:
   train_epochs: 10
   batch_size: 32 # help='batch size of train input data'
   patience: 3 #help='early stopping patience'
-  learning_rate: 0.005
+  learning_rate: 0.001
   loss: 'MSE' #loss function
   lradj: 'type1' #help='adjust learning rate'
   use_amp: false #help='use automatic mixed precision training', default=False
@@ -84,8 +84,8 @@ data_config:
   data_mode: 2 # 0的话就是使用数据长度切割数据，1的话就是使用时间切割数据
   unit_len: 12 # 一天的数据序列长度
   training_step: 1 # 训练时偏移的步长
-  past_len: 5 # 历史窗长，多少个unit_len
-  pred_len: 5 # 预测长度，多少个unit_len
+  past_len: 10 # 历史窗长，多少个unit_len
+  pred_len: 1 # 预测长度，多少个unit_len
   data_len: # data_mode为0
     end: "2024-11-19 23:45:00" # 确定数据集的终止时间
     train: 366 # 训练集长度，多少个unit_len，-1时为剩余的全部数据

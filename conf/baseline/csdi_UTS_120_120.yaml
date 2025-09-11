@@ -1,11 +1,11 @@
 model_name: csdi
 trainer_name: CSDI_trainer
-config_path: 'conf/baseline/csdi_UTS.yaml'
+config_path: 'conf/baseline/csdi_UTS_120_120.yaml'
 seed: 2024 # 随机数种子
 # training
 training_config:
   seed: 2024 # 随机数种子
-  device: "cuda:4" # 训练或推理使用的GPU
+  device: "cuda:5" # 训练或推理使用的GPU
   mode: "pred" # 'pred'还是'train'
   save_path: './experiments/csdi/'
   model_path: '' # 如果不为空，则直接加载模型进行推理，否则进行训练
@@ -26,7 +26,7 @@ training_config:
     lr_gamma: 0.1
   roll_run: 0 # 定义额外滚动测试次数，为0时即为不进行滚动测试，只测试一次
   roll_step: 7 # 定义滚动测试的平移长度为多少个unit_len
-  inverse: True #输出结果是否去归一化
+  inverse: False #输出结果是否去归一化
 
 
 # data
@@ -34,16 +34,20 @@ data_config:
   is_non_stationary: False # 决定是否要进行非平稳时间序列的训练，1的话则进行归一化
   dataset_name: UTS_Dataset
   data_path: ./data/processed_data/1_datacenter.csv # 数据所在位置
-  columns: ['cpu_util'] # 确定取数据中哪些列及其相对位置
-  target_cols: ['cpu_util'] # 目标列名
+  columns: ['cpu_util', 'gpu0_util', 'gpu1_util', 'gpu2_util',
+       'gpu3_util', 'gpu4_util', 'gpu5_util', 'gpu6_util', 'gpu7_util',
+       'memory', 'power'] # 确定取数据中哪些列及其相对位置
+  target_cols: ['cpu_util', 'gpu0_util', 'gpu1_util', 'gpu2_util',
+       'gpu3_util', 'gpu4_util', 'gpu5_util', 'gpu6_util', 'gpu7_util',
+       'memory', 'power'] # 目标列名
   feature_cols_da: [] # 辅助变量，日前
   feature_cols_mask2D: [] # 辅助变量，日内
   feature_cols_mask1D: [] # 辅助变量，日内
   data_mode: 2 # 0的话就是使用数据长度切割数据，1的话就是使用时间切割数据
   unit_len: 12 # 一天的数据序列长度
   training_step: 1 # 训练时偏移的步长
-  past_len: 5 # 历史窗长，多少个unit_len
-  pred_len: 1 # 预测长度，多少个unit_len
+  past_len: 10 # 历史窗长，多少个unit_len
+  pred_len: 10 # 预测长度，多少个unit_len
   data_len: # data_mode为0
     end: "2024-11-19 23:45:00" # 确定数据集的终止时间
     train: 366 # 训练集长度，多少个unit_len，-1时为剩余的全部数据

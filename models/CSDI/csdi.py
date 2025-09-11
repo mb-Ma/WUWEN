@@ -72,6 +72,7 @@ class csdi:
         self.foldername = None  # 结果存储位置
 
         self.target_dim = len(configs['data_config']["columns"])  # 预测目标的维度
+        self.real_target_dim=len(configs['data_config']["target_cols"])
         self.device = configs['training_config']["device"]  # 训练设备
 
         self.dataloader = {"train": None, "valid": None, "test": None}  # 数据加载器
@@ -370,7 +371,7 @@ class csdi:
                         self.dataloader["valid"],
                         self.config['training_config']["valid_nsample"],
                     )
-                    self.valid_test(output)
+                    self.valid_test(output,target_dim=self.real_target_dim)
                     (
                         all_target,
                         all_evalpoint,
@@ -383,14 +384,14 @@ class csdi:
                         MAE_torch,
                         all_target, all_evalpoint, all_observed_point, 
                         all_observed_time, all_generated_samples,
-                        self.mean, self.std
+                        self.mean, self.std, target_dim=self.real_target_dim
                     )
                     
                     rmse = self.evaluate(
                         RMSE_torch,
                         all_target, all_evalpoint, all_observed_point, 
                         all_observed_time, all_generated_samples,
-                        self.mean, self.std
+                        self.mean, self.std, target_dim=self.real_target_dim
                     )
 
                     # 存储验证效果最好的模型
@@ -408,7 +409,7 @@ class csdi:
             self.load_model(best_path)
             # 训练完成后进行测试集推理
             output = self.predict(self.dataloader["test"], self.config['model_config']["nsample"])
-            self.output_save(output)
+            self.output_save(output, target_dim=self.real_target_dim)
             (
                 all_target,
                 all_evalpoint,
@@ -426,6 +427,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
 
             rmse = self.evaluate(
@@ -437,6 +439,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
 
             mape = self.evaluate(
@@ -448,6 +451,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
             r2 = self.evaluate(
                 R2_torch,
@@ -458,6 +462,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
             spearman = self.evaluate(
                 SPEARMAN_torch,
@@ -468,6 +473,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
             pearson = self.evaluate(
                 PEARSON_torch,
@@ -478,6 +484,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
             smape = self.evaluate(
                 SMAPE_torch,
@@ -488,6 +495,7 @@ class csdi:
                 all_generated_samples,
                 self.mean,
                 self.std,
+                target_dim=self.real_target_dim
             )
             print(f"第{k}次测试集MAE：", mae)
             print(f"第{k}次测试集RMSE：", rmse)
@@ -575,7 +583,7 @@ class csdi:
             all_generated_samples = []
             with tqdm(dataloader, mininterval=5.0, maxinterval=50.0) as it:
                 for batch_no, test_batch in enumerate(it, start=1):
-                    output = self.model.evaluate(test_batch, nsample)
+                    output = self.model.evaluate(test_batch, nsample,target_dim=self.real_target_dim)
 
                     samples, c_target, eval_points, observed_points, observed_time = (
                         output
@@ -612,7 +620,7 @@ class csdi:
             all_observed_time,
             all_generated_samples,
         )
-    def evaluate(self, metric_func, *data):
+    def evaluate(self, metric_func, *data, target_dim=10):
         """
         对预测结果进行评测，使用utils.metrics中的指标函数
         """
@@ -629,14 +637,19 @@ class csdi:
         
         # 提取预测部分（最后pred_len个时间步）
         pred_length = int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len'])
-        targets = targets[:, -pred_length:, 0]  # (B, pred_len)
-        samples = samples[:, :, -pred_length:, 0]  # (B, nsample, pred_len)
+        # 保留第三维的所有数据
+        if target_dim == 1:
+            targets = targets[:, -pred_length:, 0]
+            samples = samples[:, :, -pred_length:, 0]
+        else:
+            targets = targets[:, -pred_length:, :]  # (B, pred_len, K)
+            samples = samples[:, :, -pred_length:, :]  # (B, nsample, pred_len, K)
         
         # 使用中位数作为预测值（第50个百分位数）
         if samples.shape[1] > 1:  # 如果有多个样本
-            pred_values = torch.quantile(samples, 0.5, dim=1)  # (B, pred_len)
+            pred_values = torch.quantile(samples, 0.5, dim=1)  # (B, pred_len, K)
         else:
-            pred_values = samples.squeeze(1)  # (B, pred_len)
+            pred_values = samples.squeeze(1)  # (B, pred_len, K)
         
         # 确保数据是连续的
         targets = targets.contiguous()
@@ -653,7 +666,7 @@ class csdi:
             # 兼容原有的指标函数调用方式
             return metric_func(*data)
 
-    def valid_test(self, output):
+    def valid_test(self, output, target_dim=10):
         (
             all_target,
             all_evalpoint,
@@ -663,40 +676,71 @@ class csdi:
         ) = output
         targets = all_target * self.std + self.mean
         samples = all_generated_samples * self.std + self.mean
-        targets = targets[:, -int(self.config['data_config']["unit_len"]*self.config['data_config']['pred_len']) :, 0]
-        targets = targets.reshape(-1).unsqueeze(1).numpy()
-        samples = samples[:, :, -int(self.config['data_config']["unit_len"]*self.config['data_config']['pred_len']) :, 0]
+
+        pred_len = int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len'])
+
+        if target_dim == 1:
+            targets = targets[:, -pred_len:, 0]
+            targets = targets.reshape(-1).unsqueeze(1).numpy()
+            samples = samples[:, :, -pred_len:, 0]
+        else:
+            targets = targets[:, -pred_len:, :]
+            targets = targets.reshape(-1, target_dim).numpy()
+            samples = samples[:, :, -pred_len:, :]
 
         qlist = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         quantiles = []
-        for q in qlist:
-            quantiles.append(torch.quantile(samples, q, dim=1).numpy())
+        if target_dim == 1:
+            for q in qlist:
+                quantiles.append(torch.quantile(samples, q, dim=1).numpy())
+            samples = np.transpose(samples, (0, 2, 1))
+            samples = samples.reshape(-1, self.config['training_config']["valid_nsample"])
+            samples = np.concatenate(
+                (quantiles[4].reshape(-1)[:, np.newaxis], samples), axis=1
+            )
+            pred_values = samples[:, 0]  # 使用中位数预测值
+            mae = MAE_np(pred_values, targets.flatten())
+            rmse = RMSE_np(pred_values, targets.flatten())
+            r2 = R2_np(pred_values, targets.flatten())
+            spearman = SPEARMAN_np(pred_values, targets.flatten())
+            pearson = PEARSON_np(pred_values, targets.flatten())
+            print(f"验证集去归一化MAE: {mae}, RMSE: {rmse}")
 
-        samples = np.transpose(samples, (0, 2, 1))
-        samples = samples.reshape(-1, self.config['training_config']["valid_nsample"])
-        samples = np.concatenate(
-            (quantiles[4].reshape(-1)[:, np.newaxis], samples.numpy()), axis=1
-        )
-        
-        # 使用新的指标函数计算MAE和RMSE
-        pred_values = samples[:, 0]  # 使用中位数预测值
-        mae = MAE_np(pred_values, targets.flatten())
-        rmse = RMSE_np(pred_values, targets.flatten())
-        r2 = R2_np(pred_values, targets.flatten())
-        spearman = SPEARMAN_np(pred_values, targets.flatten())
-        pearson = PEARSON_np(pred_values, targets.flatten())
-        print(f"验证集去归一化MAE: {mae}, RMSE: {rmse}")
-        
-        datas = np.concatenate((targets, samples), axis=1)
-        cols = ["Real", "Prediction"] + [
-            f"Sample_{x}" for x in range(self.config['training_config']["valid_nsample"])
-        ]
+            datas = np.concatenate((targets, samples), axis=1)
+            cols = ["Real", "Prediction"] + [
+                f"Sample_{x}" for x in range(self.config['training_config']["valid_nsample"])
+            ]
+        else:
+            # 多变量情况，分别对每个变量计算quantile和样本
+            # 这里只保存中位数和所有样本
+            quantiles = []
+            for q in qlist:
+                quantiles.append(torch.quantile(samples, q, dim=1).numpy())  # (B, pred_len, K)
+            # 取中位数
+            median_pred = quantiles[4].reshape(-1, target_dim)
+            # (B, nsample, pred_len, K) -> (B, pred_len, nsample, K)
+            samples = np.transpose(samples, (0, 2, 1, 3))
+            # (B*pred_len, nsample, K)
+            samples = samples.reshape(-1, self.config['training_config']["valid_nsample"], target_dim)
+            # 拼接中位数和样本
+            samples_concat = np.concatenate((median_pred, samples[:, :, 0]), axis=1) if samples.shape[2] == 1 else np.concatenate((median_pred, samples.reshape(-1, self.config['training_config']["valid_nsample"]*target_dim)), axis=1)
+            pred_values = median_pred  # (B*pred_len, K)
+            mae = MAE_np(pred_values, targets)
+            rmse = RMSE_np(pred_values, targets)
+            r2 = R2_np(pred_values, targets)
+            spearman = SPEARMAN_np(pred_values, targets)
+            pearson = PEARSON_np(pred_values, targets)
+            print(f"验证集去归一化MAE: {mae}, RMSE: {rmse}")
+
+            datas = np.concatenate((targets, median_pred), axis=1)
+            cols = ["Real_" + str(i) for i in range(target_dim)] + ["Prediction_" + str(i) for i in range(target_dim)]
+
         output_pd = pd.DataFrame(datas, columns=cols)
         times = pd.DataFrame(range(len(targets)), columns=["timestamp"])
         output_pd = pd.concat((times, output_pd), axis=1)
         with open(self.foldername + "valid_results.pkl", 'wb') as file:
             pickle.dump(output_pd, file)
-    def output_save(self, output) -> None:
+    def output_save(self, output, target_dim=10) -> None:
         """
         存储标准的pd格式的预测数据（以及其原始文件，方便更进一步分析）
         时间 + 预测 + 真值
@@ -715,35 +759,71 @@ class csdi:
             targets = all_target
             samples = all_generated_samples
 
-        targets = targets[:, -int(self.config['data_config']["unit_len"]*self.config['data_config']['pred_len']) :, 0]
-        targets = targets.reshape(-1).unsqueeze(1).numpy()
-        samples = samples[:, :, -int(self.config['data_config']["unit_len"]*self.config['data_config']['pred_len']) :, 0]
+        # 判断target_dim，决定保留的维度
+        if target_dim == 1:
+            # 单变量情况，保留最后一个预测窗口的第0维
+            targets = targets[:, -int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len']):, 0]
+            targets = targets.reshape(-1).unsqueeze(1).numpy()
+            samples = samples[:, :, -int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len']):, 0]
+        else:
+            # 多变量情况，保留所有变量
+            targets = targets[:, -int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len']):, :]
+            targets = targets.reshape(-1, target_dim).numpy()
+            samples = samples[:, :, -int(self.config['data_config']["unit_len"] * self.config['data_config']['pred_len']):, :]
+            # samples shape: (B, nsample, L, K)
 
         qlist = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
         quantiles = []
-        for q in qlist:
-            quantiles.append(torch.quantile(samples, q, dim=1).numpy())
+        if target_dim == 1:
+            for q in qlist:
+                quantiles.append(torch.quantile(samples, q, dim=1).numpy())
+            samples = np.transpose(samples, (0, 2, 1))
+            samples = samples.reshape(-1, self.config['model_config']["nsample"])
+            samples = np.concatenate(
+                (quantiles[4].reshape(-1)[:, np.newaxis], samples), axis=1
+            )
+            pred_values = samples[:, 0]  # 使用中位数预测值
+            mae = MAE_np(pred_values, targets.flatten())
+            rmse = RMSE_np(pred_values, targets.flatten())
+            smape = SMAPE_np(pred_values, targets.flatten())
+            r2 = R2_np(pred_values, targets.flatten())
+            spearman = SPEARMAN_np(pred_values, targets.flatten())
+            pearson = PEARSON_np(pred_values, targets.flatten())
+            print(f"测试集MAE: {mae}, RMSE: {rmse}")
 
-        samples = np.transpose(samples, (0, 2, 1))
-        samples = samples.reshape(-1, self.config['model_config']["nsample"])
-        samples = np.concatenate(
-            (quantiles[4].reshape(-1)[:, np.newaxis], samples.numpy()), axis=1
-        )
-        
-        # 使用新的指标函数计算MAE和RMSE
-        pred_values = samples[:, 0]  # 使用中位数预测值
-        mae = MAE_np(pred_values, targets.flatten())
-        rmse = RMSE_np(pred_values, targets.flatten())
-        smape = SMAPE_np(pred_values, targets.flatten())
-        r2 = R2_np(pred_values, targets.flatten())
-        spearman = SPEARMAN_np(pred_values, targets.flatten())
-        pearson = PEARSON_np(pred_values, targets.flatten())
-        print(f"测试集MAE: {mae}, RMSE: {rmse}")
-        
-        datas = np.concatenate((targets, samples), axis=1)
-        cols = ["Real", "Prediction"] + [
-            f"Sample_{x}" for x in range(self.config['model_config']["nsample"])
-        ]
+            datas = np.concatenate((targets, samples), axis=1)
+            cols = ["Real", "Prediction"] + [
+                f"Sample_{x}" for x in range(self.config['model_config']["nsample"])
+            ]
+        else:
+            # 多变量
+            nsample = self.config['model_config']["nsample"]
+            K = samples.shape[-1]
+            for q in qlist:
+                quantiles.append(torch.quantile(samples, q, dim=1).numpy())
+            samples = np.transpose(samples, (0, 2, 1, 3))  # (B, L, nsample, K)
+            samples = samples.reshape(-1, nsample, K)  # (B*L, nsample, K)
+            quantile_mid = quantiles[4].reshape(-1, K)  # (B*L, K)
+            samples_np = samples  # (B*L, nsample, K)
+            # 拼接中位数
+            samples_concat = np.concatenate((quantile_mid[:, np.newaxis, :], samples_np), axis=1)  # (B*L, nsample+1, K)
+            # 展平成二维
+            samples_concat = samples_concat.reshape(-1, (nsample + 1) * K)
+            pred_values = quantile_mid  # (B*L, K)
+            mae = MAE_np(pred_values, targets)
+            rmse = RMSE_np(pred_values, targets)
+            smape = SMAPE_np(pred_values, targets)
+            r2 = R2_np(pred_values, targets)
+            spearman = SPEARMAN_np(pred_values, targets)
+            pearson = PEARSON_np(pred_values, targets)
+            print(f"测试集MAE: {mae}, RMSE: {rmse}")
+
+            datas = np.concatenate((targets, samples_concat), axis=1)
+            # 构建列名
+            cols = [f"Real_{i}" for i in range(K)] + \
+                   [f"Prediction_{i}" for i in range(K)] + \
+                   [f"Sample_{x}_{i}" for x in range(nsample) for i in range(K)]
+
         output_pd = pd.DataFrame(datas, columns=cols)
         times = pd.DataFrame(self.test_index, columns=["timestamp"])
         output_pd = pd.concat((times, output_pd), axis=1)
