@@ -2,10 +2,19 @@ import pandas as pd
 import numpy as np
 from tabulate import tabulate
 import matplotlib.pyplot as plt
-from utils.metrics import MAE_np, RMSE_np, MAPE_np, R2_np, SPEARMAN_np, PEARSON_np, SMAPE_np
-def pred_metrics(file_path='../experiments/timemixer/processed_data/2025-09-10_22:13:31/', col_names=None):
-    # 加载数据
-    data = np.load(file_path+'result.npz')
+from metrics import MAE_np, RMSE_np, MAPE_np, R2_np, SPEARMAN_np, PEARSON_np, SMAPE_np
+def pred_metrics(file_path='../experiments/timemixer/processed_data/2025-09-13_15:57:13/', col_names=None):
+    # 加载数据，兼容相对路径和绝对路径
+    import os
+
+    npz_path = os.path.abspath(os.path.join(os.path.dirname(__file__), file_path, 'result.npz'))
+    if not os.path.exists(npz_path):
+        # 尝试直接用传入的file_path（防止file_path已经是绝对路径）
+        npz_path = os.path.join(file_path, 'result.npz')
+        if not os.path.exists(npz_path):
+            raise FileNotFoundError(f"找不到结果文件: {npz_path}\n请检查路径是否正确，当前工作目录为: {os.getcwd()}")
+
+    data = np.load(npz_path)
     pred = data['pred_y']  # (样本数, 序列长度, 变量数)
     true = data['real_y']
     print(pred.shape, true.shape)
@@ -31,8 +40,8 @@ def pred_metrics(file_path='../experiments/timemixer/processed_data/2025-09-10_2
             col_names[i], 
             f"{mae:.4f}", 
             f"{rmse:.4f}", 
-            f"{mape:.2f}%", 
-            f"{smape:.2f}%", 
+            f"{mape*100:.2f}%", 
+            f"{smape*100:.2f}%", 
             f"{r2:.4f}", 
             f"{spearman:.4f}", 
             f"{pearson:.4f}"
@@ -64,7 +73,7 @@ def pred_metrics(file_path='../experiments/timemixer/processed_data/2025-09-10_2
 
     return mae, rmse, mape, r2, spearman, pearson, smape
 
-# pred_metrics()
+pred_metrics()
 
 def pred_plot(
     file_path='./experiments/timemixer/processed_data/2025-09-11_10:38:28/',

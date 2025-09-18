@@ -8,7 +8,7 @@ training_config:
   #exogenous_forecast 多推1
   seed: 2024 # 随机数种子
   des: 'test' # help='exp description'
-  device: "cuda:5" # 训练或推理使用的GPU
+  device: "cuda:6" # 训练或推理使用的GPU
   is_training: True # 'pred'还是'train'
   data: 'UTS_Dataset'
   # data_path: './datasets/ETTm1/data.pkl'

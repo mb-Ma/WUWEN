@@ -594,7 +594,63 @@ class Dataset_common(Dataset):
                 self.data_x, self.data_y, augmentation_tags = run_augmentation_single(self.data_x, self.data_y, self.args)
 
             self.data_stamp = data_stamp
+    def datasets_index(self):
+        """
+        返回各个数据集的起止时间戳索引
+        
+        Returns:
+            dict: 包含train、val、test数据集起止时间戳的字典
+                格式: {'train': (start_timestamp, end_timestamp), 'val': (start_timestamp, end_timestamp), 'test': (start_timestamp, end_timestamp)}
+        """
+        # 读取原始数据获取时间戳
+        df_raw = pd.read_csv(self.data_path)
+        df_raw.set_index('timestamp', inplace=True)
+        df_raw.index = pd.to_datetime(df_raw.index)
+        df_raw = df_raw.reset_index()
+        
+        if self.args.data_mode == 0:
+            # 模式0：按固定长度划分
+            df_raw = df_raw.loc[:self.args.data_len['end']]
+            border1s = [0, self.train_len-self.past_len, self.train_len+self.valid_len-self.past_len] 
+            border2s = [self.train_len, self.train_len+self.valid_len, self.train_len+self.valid_len+self.test_len]
             
+        elif self.args.data_mode == 1:
+            # 模式1：按时间范围划分
+            train_row_start = df_raw.index.get_loc(self.args.data_time_train_start)
+            train_row_end = df_raw.index.get_loc(self.args.data_time_train_end)
+            valid_row_start = df_raw.index.get_loc(self.args.data_time_valid_start)
+            valid_row_end = df_raw.index.get_loc(self.args.data_time_valid_end)
+            test_row_start = df_raw.index.get_loc(self.args.data_time_test_start)
+            test_row_end = df_raw.index.get_loc(self.args.data_time_test_end)
+            
+            border1s = [train_row_start, valid_row_start-self.past_len, test_row_start-self.past_len]
+            border2s = [train_row_end+1, valid_row_end+1, test_row_end+1]
+            
+        elif self.args.data_mode == 2:
+            # 模式2：按比例划分
+            total_data_len = len(df_raw)
+            
+            train_ratio, valid_ratio, test_ratio = self.args.train_val_test_ratio
+            train_len_ratio = int(total_data_len * train_ratio)
+            valid_len_ratio = int(total_data_len * valid_ratio)
+            test_len_ratio = total_data_len - train_len_ratio - valid_len_ratio
+            
+            border1s = [0, train_len_ratio-self.past_len, train_len_ratio+valid_len_ratio-self.past_len]
+            border2s = [train_len_ratio, train_len_ratio+valid_len_ratio, train_len_ratio+valid_len_ratio+test_len_ratio]
+        
+        # 获取对应的时间戳
+        train_start_time = df_raw.iloc[border1s[0]]['timestamp']
+        train_end_time = df_raw.iloc[border2s[0]-1]['timestamp']
+        val_start_time = df_raw.iloc[border1s[1]]['timestamp']
+        val_end_time = df_raw.iloc[border2s[1]-1]['timestamp']
+        test_start_time = df_raw.iloc[border1s[2]]['timestamp']
+        test_end_time = df_raw.iloc[border2s[2]-1]['timestamp']
+        
+        return {
+            'train': (train_start_time, train_end_time),
+            'val': (val_start_time, val_end_time),
+            'test': (test_start_time, test_end_time)
+        }
 
 
     def __getitem__(self, index):

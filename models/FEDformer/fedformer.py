@@ -429,5 +429,8 @@ class fedformer(Exp_Basic):
             real_y=trues,
             pred_y=preds,
         )
-
+        import pickle 
+        datasets_index = test_data.datasets_index()
+        with open(folder_path + 'datasets_index.pkl', 'wb') as file:
+            pickle.dump(datasets_index, file)
         return
