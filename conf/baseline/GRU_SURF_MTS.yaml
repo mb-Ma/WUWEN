@@ -1,0 +1,40 @@
+# data
+data_path: data/processed_data/surf_metrics.csv
+train_val_test_ratio: [0.7, 0.1, 0.2]
+
+# Training
+dataset_name: TS_Dataset
+model_name: gru
+trainer_name: MTS_trainer
+in_var: [0, 11, 12] # pre-prepare feat indexs
+out_var: [0]
+loss_name: MAE
+use_gpu: True
+use_multi_gpu: False
+devices: '0'
+gpu: 0
+seed: 9432
+patience: 5
+learning_rate: 0.001
+pct_start: 0.2
+epochs: 100
+batch_size: 64
+
+in_len: 120
+out_len: 120
+stride: 1
+norm_type: "ZScore"
+if_col_norm: True
+is_norm_loss: True
+timeenc: -1
+freq: '30s'
+
+# model
+dropout: 0.3
+hidden_size: 64
+num_layers: 2
+T_embed_dim: 8 # 4(feats)*8=32
+
+early_stoping: True
+skip_epoch: 1
+save_results: True
